@@ -1,0 +1,19 @@
+{
+  "env": {
+    "ATEAM_PROJECT_ID": "swagger-jack",
+    "ATEAM_API_URL": "http://localhost:3000",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "ATEAM_TEAMMATE_MODE": "auto"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(mkdir *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Write(internal/**)",
+      "Edit(internal/**)",
+      "Write(cmd/**)",
+      "Edit(cmd/**)"
+    ]
+  }
+}

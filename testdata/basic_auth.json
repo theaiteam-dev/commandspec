@@ -1,0 +1,28 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Basic Auth API",
+    "version": "1.0.0"
+  },
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "basic"
+      }
+    }
+  },
+  "security": [
+    { "basicAuth": [] }
+  ],
+  "paths": {
+    "/items": {
+      "get": {
+        "summary": "List items",
+        "responses": {
+          "200": { "description": "OK" }
+        }
+      }
+    }
+  }
+}

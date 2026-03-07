@@ -1,0 +1,9 @@
+{
+  "packageManager": "go",
+  "checks": {
+    "lint": "golangci-lint run ./...",
+    "unit": "go test -race ./..."
+  },
+  "precheck": ["lint", "unit"],
+  "postcheck": ["lint", "unit"]
+}

@@ -1,0 +1,29 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "API Key Auth API",
+    "version": "1.0.0"
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    }
+  },
+  "security": [
+    { "apiKeyAuth": [] }
+  ],
+  "paths": {
+    "/items": {
+      "get": {
+        "summary": "List items",
+        "responses": {
+          "200": { "description": "OK" }
+        }
+      }
+    }
+  }
+}
