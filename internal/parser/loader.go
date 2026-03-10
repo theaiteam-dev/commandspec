@@ -210,15 +210,20 @@ func resolveSecurityScheme(ss rawSecurityScheme) model.SecurityScheme {
 	}
 }
 
-// buildResources groups paths by their first segment to produce Resources.
-// Each unique first segment becomes a resource; each HTTP method becomes a Command.
+// buildResources groups paths by resource name to produce Resources.
+// It first detects "namespace prefix" segments (e.g. "api", "v1") that are
+// shared across many paths and carry no resource-level meaning, then uses
+// up to two meaningful path segments after stripping those prefixes as the
+// resource name. Each HTTP method on a path becomes a Command.
 func buildResources(paths map[string]map[string]json.RawMessage) []model.Resource {
+	namespaces := detectNamespacePrefixes(paths)
+
 	// Use an ordered slice to keep deterministic output.
 	order := make([]string, 0)
 	byName := make(map[string]*model.Resource)
 
 	for path, methods := range paths {
-		resourceName := pathToResourceName(path)
+		resourceName := pathToResourceName(path, namespaces)
 		if _, exists := byName[resourceName]; !exists {
 			byName[resourceName] = &model.Resource{Name: resourceName}
 			order = append(order, resourceName)
@@ -244,14 +249,83 @@ func buildResources(paths map[string]map[string]json.RawMessage) []model.Resourc
 	return resources
 }
 
-// pathToResourceName extracts the resource name from the first path segment.
-// "/pets/{petId}" → "pets"
-func pathToResourceName(path string) string {
+// detectNamespacePrefixes identifies leading path segments that are API routing
+// namespaces rather than resource names. A segment qualifies as a namespace
+// prefix when it appears as the first segment in ≥25% of all paths AND leads
+// to more than 3 distinct non-parameter child segments — meaning it is a
+// mount-point that routes to many different resources rather than being a
+// resource itself.
+//
+// Example: an API where every path starts with "/api/..." will detect "api" as
+// a namespace and strip it, so "/api/users/{id}" becomes resource "users".
+// A spec where all paths start with "/pets/..." will NOT strip "pets" because
+// it only leads to a single child ("{petId}"), so it is the resource.
+func detectNamespacePrefixes(paths map[string]map[string]json.RawMessage) map[string]bool {
+	total := len(paths)
+	if total == 0 {
+		return nil
+	}
+
+	pathCount := make(map[string]int)
+	nextSegs := make(map[string]map[string]bool)
+
+	for path := range paths {
+		parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+		if len(parts) == 0 || parts[0] == "" || strings.Contains(parts[0], "{") {
+			continue
+		}
+		seg := parts[0]
+		pathCount[seg]++
+		if nextSegs[seg] == nil {
+			nextSegs[seg] = make(map[string]bool)
+		}
+		if len(parts) > 1 && parts[1] != "" && !strings.Contains(parts[1], "{") {
+			nextSegs[seg][parts[1]] = true
+		}
+	}
+
+	prefixes := make(map[string]bool)
+	for seg, count := range pathCount {
+		if float64(count)/float64(total) >= 0.25 && len(nextSegs[seg]) > 3 {
+			prefixes[seg] = true
+		}
+	}
+	return prefixes
+}
+
+// pathToResourceName derives a resource name from a path by skipping any
+// detected namespace prefixes and joining up to two meaningful (non-parameter)
+// segments with a hyphen.
+//
+// Examples (assuming "api" is a detected namespace prefix):
+//
+//	"/pets/{petId}"              → "pets"          (no prefix)
+//	"/api/users/{id}"            → "users"         (prefix stripped)
+//	"/api/admin/broadcasts/"     → "admin-broadcasts" (prefix stripped, 2 segments)
+func pathToResourceName(path string, namespaces map[string]bool) string {
 	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
-	if len(parts) == 0 || parts[0] == "" {
+
+	var meaningful []string
+	namespaceSkipped := false
+	for _, p := range parts {
+		if p == "" || strings.Contains(p, "{") {
+			break
+		}
+		// Skip at most one leading namespace prefix.
+		if !namespaceSkipped && namespaces[p] {
+			namespaceSkipped = true
+			continue
+		}
+		meaningful = append(meaningful, p)
+		if len(meaningful) == 2 {
+			break
+		}
+	}
+
+	if len(meaningful) == 0 {
 		return "root"
 	}
-	return parts[0]
+	return strings.Join(meaningful, "-")
 }
 
 // httpMethodToVerb maps an HTTP method to a CLI verb.

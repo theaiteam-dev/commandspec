@@ -46,12 +46,14 @@ func buildFromRaw(data []byte) ([]Resource, error) {
 		return nil, fmt.Errorf("parsing spec JSON: %w", err)
 	}
 
+	namespaces := detectNamespacePrefixes(doc.Paths)
+
 	// Collect per-resource command entries in insertion order.
 	order := make([]string, 0)
 	byName := make(map[string][]*cmdEntry)
 
 	for path, methods := range doc.Paths {
-		resourceName := firstPathSegment(path)
+		resourceName := pathResourceName(path, namespaces)
 		if _, exists := byName[resourceName]; !exists {
 			order = append(order, resourceName)
 			byName[resourceName] = nil
@@ -148,13 +150,69 @@ func resolveCollisions(entries []*cmdEntry) []Command {
 	return cmds
 }
 
-// firstPathSegment extracts the resource name from the first path segment.
-func firstPathSegment(path string) string {
+// detectNamespacePrefixes identifies leading path segments that are API routing
+// namespaces (e.g. "api", "v1") rather than resource names. A segment is a
+// namespace when it appears as the first segment in ≥25% of all paths AND
+// leads to more than 3 distinct non-parameter child segments.
+func detectNamespacePrefixes(paths map[string]map[string]json.RawMessage) map[string]bool {
+	total := len(paths)
+	if total == 0 {
+		return nil
+	}
+	pathCount := make(map[string]int)
+	nextSegs := make(map[string]map[string]bool)
+	for path := range paths {
+		parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+		if len(parts) == 0 || parts[0] == "" || strings.Contains(parts[0], "{") {
+			continue
+		}
+		seg := parts[0]
+		pathCount[seg]++
+		if nextSegs[seg] == nil {
+			nextSegs[seg] = make(map[string]bool)
+		}
+		if len(parts) > 1 && parts[1] != "" && !strings.Contains(parts[1], "{") {
+			nextSegs[seg][parts[1]] = true
+		}
+	}
+	prefixes := make(map[string]bool)
+	for seg, count := range pathCount {
+		if float64(count)/float64(total) >= 0.25 && len(nextSegs[seg]) > 3 {
+			prefixes[seg] = true
+		}
+	}
+	return prefixes
+}
+
+// pathResourceName derives a resource name by skipping any detected namespace
+// prefix and joining up to two meaningful (non-parameter) path segments with "-".
+//
+// Examples (assuming "api" is a detected namespace):
+//
+//	"/pets/{id}"              → "pets"
+//	"/api/users/{id}"         → "users"
+//	"/api/admin/broadcasts/"  → "admin-broadcasts"
+func pathResourceName(path string, namespaces map[string]bool) string {
 	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
-	if len(parts) == 0 || parts[0] == "" {
+	var meaningful []string
+	namespaceSkipped := false
+	for _, p := range parts {
+		if p == "" || strings.Contains(p, "{") {
+			break
+		}
+		if !namespaceSkipped && namespaces[p] {
+			namespaceSkipped = true
+			continue
+		}
+		meaningful = append(meaningful, p)
+		if len(meaningful) == 2 {
+			break
+		}
+	}
+	if len(meaningful) == 0 {
 		return "root"
 	}
-	return parts[0]
+	return strings.Join(meaningful, "-")
 }
 
 // invalidCommandCharRE matches any character that is not an ASCII letter,

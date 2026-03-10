@@ -75,8 +75,14 @@ func Generate(spec *model.APISpec, name string, outputDir string) error {
 		return err
 	}
 
-	// cmd/<resource>.go and cmd/<resource>_<verb>.go for each resource
+	// cmd/<resource>.go and cmd/<resource>_<verb>.go for each resource.
+	// "root" and "completion" are reserved filenames — skip any resource whose
+	// name would overwrite the cobra root command or completion command files.
+	reservedCmdNames := map[string]bool{"root": true, "completion": true}
 	for _, resource := range spec.Resources {
+		if reservedCmdNames[resource.Name] {
+			continue
+		}
 		resourceSrc, err := GenerateResourceCmd(resource)
 		if err != nil {
 			return fmt.Errorf("generating resource command for %q: %w", resource.Name, err)
