@@ -79,6 +79,13 @@ func buildFlag(param map[string]interface{}) (Flag, error) {
 		}
 	}
 
+	var enumVals []string
+	if rawEnum, ok := schema["enum"].([]interface{}); ok {
+		for _, v := range rawEnum {
+			enumVals = append(enumVals, fmt.Sprintf("%v", v))
+		}
+	}
+
 	return Flag{
 		Name:        name,
 		Type:        flagType,
@@ -86,6 +93,7 @@ func buildFlag(param map[string]interface{}) (Flag, error) {
 		Default:     defaultStr,
 		Description: description,
 		Source:      FlagSourceQuery,
+		Enum:        enumVals,
 	}, nil
 }
 

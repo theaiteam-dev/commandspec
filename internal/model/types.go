@@ -65,6 +65,8 @@ type Flag struct {
 	Description string `json:"description,omitempty"`
 	// Source indicates where this flag maps to in the HTTP request.
 	Source FlagSource `json:"source"`
+	// Enum is the list of allowed values for this flag, if the schema specifies an enum.
+	Enum []string `json:"enum,omitempty"`
 }
 
 // SchemaField represents a field in a flat request body schema.

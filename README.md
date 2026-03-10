@@ -51,10 +51,15 @@ go build -o myapi .
 
 - **OpenAPI 3.x Parser** — Loads JSON/YAML specs from local files or URLs, resolves `$ref` inline
 - **Smart Command Mapping** — Automatically converts API resources and endpoints to CLI subcommands (list, get, create, update, delete)
-- **Parameter Handling** — Path params become positional args, query/body params become typed CLI flags
+- **Parameter Handling** — Path params become positional args, query/body params become typed CLI flags with enum validation
+- **Nested Object Flags** — Complex objects support dot-notation access (e.g., `--address.city`, `--metadata.tags.primary`)
+- **Body Parameter Flags** — Write operations support `--body` (raw JSON) and `--body-file` (load from file) for inline payloads
+- **Enum Support** — Automatic extraction and validation of enum fields with shell tab completion
+- **Table and JSON Output** — Generated CLIs support pretty-printed tables and structured JSON output
+- **Shell Completions** — Both swagger-jack and generated CLIs provide bash/zsh/fish completion support
 - **Security Schemes** — Supports Bearer tokens, API keys, and Basic auth with config file + env var integration
 - **Code Generation** — Complete, buildable Go projects with Cobra CLI framework
-- **Validation** — Dry-run spec validation before code generation
+- **Validation** — Dry-run spec validation before code generation with auth detection
 
 ## Usage
 
@@ -146,14 +151,19 @@ go build -o swaggerjack .
 
 ## Status
 
-**Milestone 1 (MVP) complete**. Fully functional code generator with:
-- OpenAPI 3.0 parser (JSON/YAML, local files and URLs)
-- Internal CLI model builder with resource/command/flag extraction
-- Complete Cobra CLI code generation with HTTP client wiring
-- Bearer token authentication via env vars
-- JSON output mode and pretty-printing
-- `swaggerjack init`, `validate`, `preview` commands
-- 5 integration tests + comprehensive unit tests
+**Milestone 2 complete**. Rich feature set now available:
+- **Milestone 1 (MVP)**: OpenAPI 3.0 parser, CLI model builder, code generation, authentication, JSON output
+- **Milestone 2 (Rich Features)**: YAML/URL spec loading, table output formatting, enum validation, nested dot-notation flags, body parameters, shell completions, integration tests
+
+Implemented features:
+- YAML and URL-based spec loading
+- Enum field extraction with validation and tab completion
+- Body parameter support (`--body`, `--body-file`)
+- Nested object flags with dot-notation (3 levels deep)
+- Table output formatting with `--json` override
+- Shell completion scripts (bash/zsh/fish)
+- Enhanced validation command with auth detection
+- Comprehensive integration test suite
 
 See [docs/SPEC.md](docs/SPEC.md) for full design spec and roadmap.
 

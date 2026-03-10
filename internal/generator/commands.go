@@ -80,11 +80,12 @@ func GenerateVerbCmd(resource model.Resource, cmd model.Command, cliName string)
 	varName := sanitizeIdentifier(resource.Name) + capitalise(sanitizeIdentifier(cmd.Name)) + "Cmd"
 	resourceVarName := sanitizeIdentifier(resource.Name) + "Cmd"
 
-	flagVars := buildFlagVarDeclarations(varName, cmd.Flags)
-	flagInits := buildFlagInits(varName, cmd.Flags)
+	writeOp := isWriteOperation(cmd.HTTPMethod)
+	flagVars := buildFlagVarDeclarations(varName, cmd.Flags, writeOp)
+	flagInits := buildFlagInits(varName, cmd.Flags, writeOp)
 	requiredInits := buildRequiredFlagInits(varName, cmd.Flags)
 
-	runEBody := buildRunEBody(cmd, varName, cliName)
+	runEBody := buildRunEBody(cmd, varName, cliName, writeOp)
 
 	// Determine which imports are needed.
 	imports := buildImports(cmd, cliName)
@@ -128,10 +129,20 @@ func init() {
 	return validateGoSource(src)
 }
 
+// isWriteOperation returns true for HTTP methods that carry a request body.
+func isWriteOperation(method string) bool {
+	switch strings.ToUpper(method) {
+	case "POST", "PUT", "PATCH":
+		return true
+	}
+	return false
+}
+
 // buildImports constructs the import block for the verb command file.
 func buildImports(cmd model.Command, cliName string) string {
 	hasIntOrBoolQueryFlag := false
 	hasStringSliceQueryFlag := false
+	hasDotNotationBodyFlag := false
 	for _, f := range cmd.Flags {
 		if f.Source == model.FlagSourceQuery {
 			switch f.Type {
@@ -141,6 +152,12 @@ func buildImports(cmd model.Command, cliName string) string {
 				hasStringSliceQueryFlag = true
 			}
 		}
+		if f.Source == model.FlagSourceBody && strings.Contains(f.Name, ".") {
+			parts := strings.Split(f.Name, ".")
+			if len(parts) <= 3 {
+				hasDotNotationBodyFlag = true
+			}
+		}
 	}
 
 	var imports []string
@@ -148,7 +165,7 @@ func buildImports(cmd model.Command, cliName string) string {
 		imports = append(imports, `"encoding/json"`)
 	}
 	imports = append(imports, `"fmt"`, `"os"`)
-	if hasStringSliceQueryFlag {
+	if hasStringSliceQueryFlag || hasDotNotationBodyFlag {
 		imports = append(imports, `"strings"`)
 	}
 	if hasIntOrBoolQueryFlag {
@@ -157,12 +174,13 @@ func buildImports(cmd model.Command, cliName string) string {
 	imports = append(imports, `"github.com/spf13/cobra"`)
 	if cliName != "" {
 		imports = append(imports, fmt.Sprintf(`%q`, cliName+"/internal/client"))
+		imports = append(imports, fmt.Sprintf(`%q`, cliName+"/internal/output"))
 	}
 	return "import (\n\t" + strings.Join(imports, "\n\t") + "\n)"
 }
 
 // buildRunEBody generates the RunE function body for the given command.
-func buildRunEBody(cmd model.Command, varName, cliName string) string {
+func buildRunEBody(cmd model.Command, varName, cliName string, writeOp bool) string {
 	w := &codeWriter{indent: 2}
 
 	// Read base URL from root persistent flags.
@@ -225,22 +243,140 @@ func buildRunEBody(cmd model.Command, varName, cliName string) string {
 		w.line("queryParams := map[string]string{}")
 	}
 
-	// Build body map — only if there are body flags.
+	// Runtime validation for enum flags.
+	for _, f := range cmd.Flags {
+		if len(f.Enum) == 0 {
+			continue
+		}
+		fVar := flagVarName(varName, f.Name)
+		enumLiterals := make([]string, len(f.Enum))
+		for i, v := range f.Enum {
+			enumLiterals[i] = fmt.Sprintf("%q", v)
+		}
+		allowedExpr := "{" + strings.Join(enumLiterals, ", ") + "}"
+		if f.Required {
+			// Always validate required enum flags.
+			w.linef("_allowedFor%s := []string%s", sanitizeIdentifier(f.Name), allowedExpr)
+			w.linef("_validFor%s := false", sanitizeIdentifier(f.Name))
+			w.linef("for _, _v := range _allowedFor%s { if _v == %s { _validFor%s = true; break } }", sanitizeIdentifier(f.Name), fVar, sanitizeIdentifier(f.Name))
+			w.linef("if !_validFor%s {", sanitizeIdentifier(f.Name))
+			w.indent++
+			w.linef(`return fmt.Errorf("invalid value %%q for --%s: must be one of: %s", %s)`, f.Name, strings.Join(f.Enum, ", "), fVar)
+			w.indent--
+			w.line("}")
+		} else {
+			// Only validate optional flags when explicitly set.
+			w.linef(`if cmd.Flags().Changed(%q) {`, f.Name)
+			w.indent++
+			w.linef("_allowedFor%s := []string%s", sanitizeIdentifier(f.Name), allowedExpr)
+			w.linef("_validFor%s := false", sanitizeIdentifier(f.Name))
+			w.linef("for _, _v := range _allowedFor%s { if _v == %s { _validFor%s = true; break } }", sanitizeIdentifier(f.Name), fVar, sanitizeIdentifier(f.Name))
+			w.linef("if !_validFor%s {", sanitizeIdentifier(f.Name))
+			w.indent++
+			w.linef(`return fmt.Errorf("invalid value %%q for --%s: must be one of: %s", %s)`, f.Name, strings.Join(f.Enum, ", "), fVar)
+			w.indent--
+			w.line("}")
+			w.indent--
+			w.line("}")
+		}
+	}
+
+	// Build body — support --body/--body-file overrides for write operations.
+	if writeOp {
+		// --body-file: read JSON from file, set body string
+		w.line(`if bodyFile != "" {`)
+		w.indent++
+		w.line("fileData, err := os.ReadFile(bodyFile)")
+		w.line("if err != nil {")
+		w.indent++
+		w.linef(`return fmt.Errorf("reading body-file: %%w", err)`)
+		w.indent--
+		w.line("}")
+		w.line("if !json.Valid(fileData) {")
+		w.indent++
+		w.line(`return fmt.Errorf("body-file does not contain valid JSON")`)
+		w.indent--
+		w.line("}")
+		w.line("body = string(fileData)")
+		w.indent--
+		w.line("}")
+		// Decide body source: --body/--body-file override vs individual flags
+		w.line(`if body != "" {`)
+		w.indent++
+		w.line("if !json.Valid([]byte(body)) {")
+		w.indent++
+		w.line(`return fmt.Errorf("--body does not contain valid JSON")`)
+		w.indent--
+		w.line("}")
+		w.line("var bodyObj interface{}")
+		w.line("_ = json.Unmarshal([]byte(body), &bodyObj)")
+		w.linef(`resp, err := c.Do(%q, %q, pathParams, queryParams, bodyObj)`, cmd.HTTPMethod, cmd.Path)
+		w.line("if err != nil {")
+		w.indent++
+		w.line("return err")
+		w.indent--
+		w.line("}")
+		w.line(`jsonMode, _ := cmd.Root().PersistentFlags().GetBool("json")`)
+		w.line(`noColor, _ := cmd.Root().PersistentFlags().GetBool("no-color")`)
+		w.line("if jsonMode {")
+		w.indent++
+		w.line(`fmt.Printf("%s\n", string(resp))`)
+		w.indent--
+		w.line("} else {")
+		w.indent++
+		w.line("if err := output.PrintTable(resp, noColor); err != nil {")
+		w.indent++
+		w.line(`fmt.Println(string(resp))`)
+		w.indent--
+		w.line("}")
+		w.indent--
+		w.line("}")
+		w.line("return nil")
+		w.indent--
+		w.line("}")
+	}
+
+	// Build body from individual flags (fallback for write ops when --body/--body-file not set,
+	// or for non-write ops that have body flags).
 	if hasBodyFlags {
-		w.line("body := map[string]interface{}{}")
+		w.line("bodyMap := map[string]interface{}{}")
 		for _, f := range cmd.Flags {
 			if f.Source != model.FlagSourceBody {
 				continue
 			}
 			fVar := flagVarName(varName, f.Name)
-			w.linef("body[%q] = %s", f.Name, fVar)
+			parts := strings.Split(f.Name, ".")
+			if len(parts) == 1 {
+				// Flat flag — direct assignment.
+				w.linef("bodyMap[%q] = %s", f.Name, fVar)
+			} else if len(parts) <= 3 {
+				// Dot-notation: build nested maps using strings.Split path.
+				w.linef("{")
+				w.indent++
+				w.linef("_parts := strings.Split(%q, \".\")", f.Name)
+				w.line("_cur := bodyMap")
+				w.line("for _, _p := range _parts[:len(_parts)-1] {")
+				w.indent++
+				w.line("if _, ok := _cur[_p]; !ok {")
+				w.indent++
+				w.line("_cur[_p] = map[string]interface{}{}")
+				w.indent--
+				w.line("}")
+				w.line("_cur = _cur[_p].(map[string]interface{})")
+				w.indent--
+				w.line("}")
+				w.linef("_cur[_parts[len(_parts)-1]] = %s", fVar)
+				w.indent--
+				w.line("}")
+			}
+			// Flags with >3 parts (4+ segments) are skipped per depth limit.
 		}
 	}
 
 	// Call client.Do.
 	bodyArg := "nil"
 	if hasBodyFlags {
-		bodyArg = "body"
+		bodyArg = "bodyMap"
 	}
 
 	w.linef("resp, err := c.Do(%q, %q, pathParams, queryParams, %s)",
@@ -253,21 +389,16 @@ func buildRunEBody(cmd model.Command, varName, cliName string) string {
 
 	// Read --json flag and output.
 	w.line(`jsonMode, _ := cmd.Root().PersistentFlags().GetBool("json")`)
+	w.line(`noColor, _ := cmd.Root().PersistentFlags().GetBool("no-color")`)
 	w.line("if jsonMode {")
 	w.indent++
 	w.line(`fmt.Printf("%s\n", string(resp))`)
 	w.indent--
 	w.line("} else {")
 	w.indent++
-	w.line("var out interface{}")
-	w.line("if err := json.Unmarshal(resp, &out); err != nil {")
+	w.line("if err := output.PrintTable(resp, noColor); err != nil {")
 	w.indent++
-	w.line(`fmt.Printf("%s\n", string(resp))`)
-	w.indent--
-	w.line("} else {")
-	w.indent++
-	w.line(`pretty, _ := json.MarshalIndent(out, "", "  ")`)
-	w.line(`fmt.Printf("%s\n", string(pretty))`)
+	w.line(`fmt.Println(string(resp))`)
 	w.indent--
 	w.line("}")
 	w.indent--
@@ -328,11 +459,18 @@ func buildArgsExpr(args []model.Arg) string {
 // them. Returns an empty string when there are no flags.
 // StringSlice query flags are excluded because they are read inline in RunE
 // via cmd.Flags().GetStringArray().
-func buildFlagVarDeclarations(cmdVarName string, flags []model.Flag) string {
+// For write operations, body and bodyFile vars are added.
+func buildFlagVarDeclarations(cmdVarName string, flags []model.Flag, writeOp bool) string {
 	var lines []string
+	if writeOp {
+		lines = append(lines, "\tbody string", "\tbodyFile string")
+	}
 	for _, flag := range flags {
 		if flag.Type == model.FlagTypeStringSlice && flag.Source == model.FlagSourceQuery {
 			continue // read inline in RunE, no var needed
+		}
+		if flag.Source == model.FlagSourceBody && strings.Count(flag.Name, ".") >= 3 {
+			continue // 4+ part dot-notation flags exceed depth limit, skipped in RunE
 		}
 		goType := flagGoType(flag.Type)
 		varName := flagVarName(cmdVarName, flag.Name)
@@ -346,19 +484,43 @@ func buildFlagVarDeclarations(cmdVarName string, flags []model.Flag) string {
 
 // buildFlagInits returns the lines that register each flag with Cobra inside
 // the init() function. Each line is indented by one tab.
-func buildFlagInits(cmdVarName string, flags []model.Flag) string {
+// For write operations, --body and --body-file flag registrations are prepended.
+func buildFlagInits(cmdVarName string, flags []model.Flag, writeOp bool) string {
 	var lines []string
+	if writeOp {
+		lines = append(lines,
+			fmt.Sprintf("\t%s.Flags().StringVar(&body, \"body\", \"\", \"Raw JSON body (overrides individual flags)\")", cmdVarName),
+			fmt.Sprintf("\t%s.Flags().StringVar(&bodyFile, \"body-file\", \"\", \"Path to JSON file to use as request body\")", cmdVarName),
+		)
+	}
 	for _, flag := range flags {
+		if flag.Source == model.FlagSourceBody && strings.Count(flag.Name, ".") >= 3 {
+			continue // 4+ part dot-notation flags exceed depth limit, not registered
+		}
 		var line string
 		if flag.Type == model.FlagTypeStringSlice && flag.Source == model.FlagSourceQuery {
 			// Read inline in RunE — register without a pre-declared var.
+			desc := buildFlagDescription(flag)
 			line = fmt.Sprintf(`%s.Flags().StringArray(%q, nil, %q)`,
-				cmdVarName, flag.Name, flag.Description)
+				cmdVarName, flag.Name, desc)
 		} else {
 			varName := flagVarName(cmdVarName, flag.Name)
 			line = buildFlagRegistration(cmdVarName, varName, flag)
 		}
 		lines = append(lines, "\t"+line)
+
+		// Register completion function for enum flags.
+		if len(flag.Enum) > 0 {
+			enumLiterals := make([]string, len(flag.Enum))
+			for i, v := range flag.Enum {
+				enumLiterals[i] = fmt.Sprintf("%q", v)
+			}
+			completionLine := fmt.Sprintf(
+				"\t%s.RegisterFlagCompletionFunc(%q, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {\n\t\treturn []string{%s}, cobra.ShellCompDirectiveNoFileComp\n\t})",
+				cmdVarName, flag.Name, strings.Join(enumLiterals, ", "),
+			)
+			lines = append(lines, completionLine)
+		}
 	}
 	if len(lines) == 0 {
 		return ""
@@ -366,21 +528,35 @@ func buildFlagInits(cmdVarName string, flags []model.Flag) string {
 	return strings.Join(lines, "\n") + "\n"
 }
 
+// buildFlagDescription returns the flag description, appending enum values if present.
+func buildFlagDescription(flag model.Flag) string {
+	desc := flag.Description
+	if len(flag.Enum) > 0 {
+		if desc != "" {
+			desc += " (" + strings.Join(flag.Enum, "|") + ")"
+		} else {
+			desc = "(" + strings.Join(flag.Enum, "|") + ")"
+		}
+	}
+	return desc
+}
+
 // buildFlagRegistration produces the single Flags().XxxVar(...) call for one flag.
 func buildFlagRegistration(cmdVarName, varName string, flag model.Flag) string {
+	desc := buildFlagDescription(flag)
 	switch flag.Type {
 	case model.FlagTypeInt:
 		return fmt.Sprintf(`%s.Flags().IntVar(&%s, %q, 0, %q)`,
-			cmdVarName, varName, flag.Name, flag.Description)
+			cmdVarName, varName, flag.Name, desc)
 	case model.FlagTypeBool:
 		return fmt.Sprintf(`%s.Flags().BoolVar(&%s, %q, false, %q)`,
-			cmdVarName, varName, flag.Name, flag.Description)
+			cmdVarName, varName, flag.Name, desc)
 	case model.FlagTypeStringSlice:
 		return fmt.Sprintf(`%s.Flags().StringArrayVar(&%s, %q, nil, %q)`,
-			cmdVarName, varName, flag.Name, flag.Description)
+			cmdVarName, varName, flag.Name, desc)
 	default: // FlagTypeString
 		return fmt.Sprintf(`%s.Flags().StringVar(&%s, %q, "", %q)`,
-			cmdVarName, varName, flag.Name, flag.Description)
+			cmdVarName, varName, flag.Name, desc)
 	}
 }
 

@@ -22,6 +22,7 @@ buildable Go CLI project using Cobra.`,
 
 	root.AddCommand(newValidateCmd())
 	root.AddCommand(newInitCmd())
+	root.AddCommand(newCompletionCmd())
 
 	return root
 }

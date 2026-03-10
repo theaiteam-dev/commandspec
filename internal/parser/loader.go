@@ -3,10 +3,15 @@ package parser
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/queso/swagger-jack/internal/model"
+	"gopkg.in/yaml.v3"
 )
 
 // rawSpec is the intermediate representation of an OpenAPI 3.0 spec used during loading.
@@ -34,12 +39,111 @@ type rawSecurityScheme struct {
 	In     string `json:"in"`
 }
 
-// Load reads an OpenAPI 3.0 JSON spec from path, resolves $ref references inline,
+// detectFormat returns "yaml" for .yaml/.yml files, "json" otherwise.
+func detectFormat(path string) string {
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext == ".yaml" || ext == ".yml" {
+		return "yaml"
+	}
+	return "json"
+}
+
+// yamlToJSON converts YAML bytes to JSON bytes.
+func yamlToJSON(data []byte) ([]byte, error) {
+	var v interface{}
+	if err := yaml.Unmarshal(data, &v); err != nil {
+		return nil, fmt.Errorf("yaml parse error: %w", err)
+	}
+	return json.Marshal(v)
+}
+
+// isURL returns true if the path looks like an HTTP or HTTPS URL.
+func isURL(path string) bool {
+	return strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://")
+}
+
+// detectFormatFromContentType returns "yaml" or "json" based on a Content-Type header value.
+func detectFormatFromContentType(ct string) string {
+	ct = strings.ToLower(ct)
+	// Strip parameters like charset
+	if idx := strings.Index(ct, ";"); idx >= 0 {
+		ct = strings.TrimSpace(ct[:idx])
+	}
+	switch ct {
+	case "application/x-yaml", "text/yaml", "application/yaml":
+		return "yaml"
+	case "application/json", "text/json":
+		return "json"
+	default:
+		return ""
+	}
+}
+
+// httpClient is the shared client used for URL-based spec loading.
+var httpClient = &http.Client{Timeout: 30 * time.Second}
+
+// loadFromURL fetches a spec from an HTTP/HTTPS URL and returns its bytes and detected format.
+func loadFromURL(rawURL string) ([]byte, string, error) {
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("creating request for %q: %w", rawURL, err)
+	}
+	req.Header.Set("User-Agent", "swagger-jack/1.0")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, "", fmt.Errorf("fetching spec from %q: %w", rawURL, err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("fetching spec from %q: HTTP %d", rawURL, resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", fmt.Errorf("reading response body from %q: %w", rawURL, err)
+	}
+
+	// Detect format: Content-Type header first, then URL path extension.
+	format := detectFormatFromContentType(resp.Header.Get("Content-Type"))
+	if format == "" {
+		// Parse just the path portion of the URL for extension detection.
+		urlPath := rawURL
+		if idx := strings.Index(urlPath, "?"); idx >= 0 {
+			urlPath = urlPath[:idx]
+		}
+		format = detectFormat(urlPath)
+	}
+
+	return data, format, nil
+}
+
+// Load reads an OpenAPI 3.0 spec (JSON or YAML) from path (file or URL), resolves $ref references inline,
 // and returns a Result containing the normalized APISpec and raw JSON bytes.
 func Load(path string) (*Result, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("loading spec %q: %w", path, err)
+	var data []byte
+	var format string
+	var err error
+
+	if isURL(path) {
+		data, format, err = loadFromURL(path)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		data, err = os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("loading spec %q: %w", path, err)
+		}
+		format = detectFormat(path)
+	}
+
+	if format == "yaml" {
+		data, err = yamlToJSON(data)
+		if err != nil {
+			return nil, fmt.Errorf("converting yaml spec %q: %w", path, err)
+		}
 	}
 
 	// Resolve $refs before unmarshalling into typed structs.

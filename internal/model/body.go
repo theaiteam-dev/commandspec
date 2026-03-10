@@ -83,11 +83,19 @@ func extractFlagsFromSchema(schema map[string]interface{}, prefix string) ([]Fla
 			}
 		}
 
+		var enumVals []string
+		if rawEnum, ok := prop["enum"].([]interface{}); ok {
+			for _, v := range rawEnum {
+				enumVals = append(enumVals, fmt.Sprintf("%v", v))
+			}
+		}
+
 		flags = append(flags, Flag{
 			Name:     qualifiedName,
 			Type:     mapSchemaType(propType),
 			Required: requiredSet[key],
 			Source:   FlagSourceBody,
+			Enum:     enumVals,
 		})
 	}
 

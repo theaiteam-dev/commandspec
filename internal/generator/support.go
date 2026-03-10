@@ -51,12 +51,15 @@ func Load(cliName string) (*Config, error) {
 `
 
 // outputTemplate is the Go source template for the generated project's output helpers.
-const outputTemplate = `package internal
+const outputTemplate = `package output
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
+
+	"github.com/olekukonko/tablewriter"
 )
 
 // Print writes data to stdout. When jsonMode is true the raw JSON is printed
@@ -76,6 +79,74 @@ func Print(data interface{}, jsonMode bool) error {
 
 	_, err = fmt.Fprintln(os.Stdout, string(encoded))
 	return err
+}
+
+// PrintTable renders JSON bytes as a human-friendly table. When noColor is
+// true, ANSI formatting is disabled. Arrays are rendered with column headers
+// derived from the first object's keys; objects are rendered as key-value pairs.
+func PrintTable(data []byte, noColor bool) error {
+	var raw interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fallback: print raw
+		_, err = fmt.Fprintln(os.Stdout, string(data))
+		return err
+	}
+
+	table := tablewriter.NewWriter(os.Stdout)
+	if noColor {
+		table.SetBorder(true)
+	}
+
+	switch v := raw.(type) {
+	case []interface{}:
+		if len(v) == 0 {
+			fmt.Fprintln(os.Stdout, "(no results)")
+			return nil
+		}
+		// Collect headers from the first element.
+		first, ok := v[0].(map[string]interface{})
+		if !ok {
+			// Not an array of objects; fall back to JSON.
+			encoded, _ := json.MarshalIndent(raw, "", "  ")
+			fmt.Fprintln(os.Stdout, string(encoded))
+			return nil
+		}
+		headers := make([]string, 0, len(first))
+		for k := range first {
+			headers = append(headers, k)
+		}
+		sort.Strings(headers)
+		table.SetHeader(headers)
+		for _, item := range v {
+			row, ok := item.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			cols := make([]string, len(headers))
+			for i, h := range headers {
+				cols[i] = fmt.Sprintf("%v", row[h])
+			}
+			table.Append(cols)
+		}
+		table.Render()
+
+	case map[string]interface{}:
+		table.SetHeader([]string{"Key", "Value"})
+		keys := make([]string, 0, len(v))
+		for k := range v {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			table.Append([]string{k, fmt.Sprintf("%v", v[k])})
+		}
+		table.Render()
+
+	default:
+		fmt.Fprintln(os.Stdout, string(data))
+	}
+
+	return nil
 }
 `
 

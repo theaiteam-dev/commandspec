@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/queso/swagger-jack/internal/model"
 	"github.com/queso/swagger-jack/internal/parser"
@@ -31,24 +32,58 @@ func newValidateCmd() *cobra.Command {
 
 // runValidate loads the spec, builds the model, and prints the summary.
 func runValidate(cmd *cobra.Command, schemaPath string) error {
+	out := cmd.OutOrStdout()
+
 	result, err := parser.Load(schemaPath)
 	if err != nil {
+		_, _ = fmt.Fprintf(out, "Error: %v\n", err)
 		return fmt.Errorf("failed to load spec: %w", err)
 	}
 
 	resources, err := model.Build(result)
 	if err != nil {
+		_, _ = fmt.Fprintf(out, "Error: %v\n", err)
 		return fmt.Errorf("failed to build model: %w", err)
 	}
 
 	totalCommands := countCommands(resources)
 
-	out := cmd.OutOrStdout()
 	_, _ = fmt.Fprintf(out, "Spec: %s (%s)\n", result.Spec.Title, result.Spec.Version)
 	_, _ = fmt.Fprintf(out, "%d resources\n", len(resources))
 	_, _ = fmt.Fprintf(out, "%d commands\n", totalCommands)
+	_, _ = fmt.Fprintf(out, "Auth: %s\n", detectAuthDescription(result.Spec))
 
 	return nil
+}
+
+// detectAuthDescription returns a human-readable description of detected auth schemes.
+func detectAuthDescription(spec *model.APISpec) string {
+	if len(spec.SecuritySchemes) == 0 {
+		return "None detected"
+	}
+
+	var parts []string
+	for _, scheme := range spec.SecuritySchemes {
+		switch scheme.Type {
+		case model.SecuritySchemeBearer:
+			parts = append(parts, "Bearer token")
+		case model.SecuritySchemeAPIKey:
+			if scheme.HeaderName != "" {
+				parts = append(parts, fmt.Sprintf("API key (%s)", scheme.HeaderName))
+			} else {
+				parts = append(parts, "API key")
+			}
+		case model.SecuritySchemeBasic:
+			parts = append(parts, "Basic")
+		default:
+			parts = append(parts, string(scheme.Type))
+		}
+	}
+
+	if len(parts) == 0 {
+		return "None detected"
+	}
+	return strings.Join(parts, ", ")
 }
 
 // countCommands sums the number of commands across all resources.

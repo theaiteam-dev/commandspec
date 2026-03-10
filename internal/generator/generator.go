@@ -20,9 +20,9 @@ import (
 //   - outputDir/cmd/root.go                  (root cobra command + global flags)
 //   - outputDir/cmd/<resource>.go            (one group command per resource)
 //   - outputDir/cmd/<resource>_<verb>.go     (one leaf command per operation)
-//   - outputDir/internal/client.go           (HTTP client)
+//   - outputDir/internal/client/client.go    (HTTP client)
+//   - outputDir/internal/output/output.go    (output helpers)
 //   - outputDir/internal/config.go           (config loader)
-//   - outputDir/internal/output.go           (output helpers)
 //   - outputDir/internal/errors.go           (error helpers)
 func Generate(spec *model.APISpec, name string, outputDir string) error {
 	if name == "" {
@@ -66,6 +66,15 @@ func Generate(spec *model.APISpec, name string, outputDir string) error {
 		return err
 	}
 
+	// cmd/completion.go
+	completionSrcStr, err := GenerateCompletion(name)
+	if err != nil {
+		return fmt.Errorf("generating completion command: %w", err)
+	}
+	if err := writeFile(filepath.Join(outputDir, "cmd", "completion.go"), completionSrcStr); err != nil {
+		return err
+	}
+
 	// cmd/<resource>.go and cmd/<resource>_<verb>.go for each resource
 	for _, resource := range spec.Resources {
 		resourceSrc, err := GenerateResourceCmd(resource)
@@ -106,12 +115,12 @@ func Generate(spec *model.APISpec, name string, outputDir string) error {
 		return err
 	}
 
-	// internal/output.go
+	// internal/output/output.go
 	outputSrc, err := GenerateOutput()
 	if err != nil {
 		return fmt.Errorf("generating output helpers: %w", err)
 	}
-	if err := writeFile(filepath.Join(outputDir, "internal", "output.go"), outputSrc); err != nil {
+	if err := writeFile(filepath.Join(outputDir, "internal", "output", "output.go"), outputSrc); err != nil {
 		return err
 	}
 
@@ -142,6 +151,7 @@ func createDirectoryLayout(outputDir string) error {
 		filepath.Join(outputDir, "cmd"),
 		filepath.Join(outputDir, "internal"),
 		filepath.Join(outputDir, "internal", "client"),
+		filepath.Join(outputDir, "internal", "output"),
 	}
 
 	for _, dir := range dirs {
@@ -185,6 +195,7 @@ func writeGoMod(outputDir, name string) error {
 go 1.21
 
 require (
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.8.0
 )
 `, name)
