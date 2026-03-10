@@ -88,12 +88,12 @@ func Generate(spec *model.APISpec, name string, outputDir string) error {
 		}
 	}
 
-	// internal/client.go
+	// internal/client/client.go — package client, imported as <name>/internal/client
 	clientSrc, err := GenerateClient(spec)
 	if err != nil {
 		return fmt.Errorf("generating client: %w", err)
 	}
-	if err := writeFile(filepath.Join(outputDir, "internal", "client.go"), clientSrc); err != nil {
+	if err := writeFile(filepath.Join(outputDir, "internal", "client", "client.go"), clientSrc); err != nil {
 		return err
 	}
 
@@ -141,6 +141,7 @@ func createDirectoryLayout(outputDir string) error {
 	dirs := []string{
 		filepath.Join(outputDir, "cmd"),
 		filepath.Join(outputDir, "internal"),
+		filepath.Join(outputDir, "internal", "client"),
 	}
 
 	for _, dir := range dirs {
