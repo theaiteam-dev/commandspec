@@ -1,7 +1,7 @@
 // Package parser provides types for the OpenAPI spec parsing pipeline.
 package parser
 
-import "github.com/theaiteam-dev/swagger-jack/internal/model"
+import "github.com/theaiteam-dev/commandspec/internal/model"
 
 // Result is the output of the loader/parser pipeline. It contains the
 // normalized APISpec and the raw JSON bytes of the original spec, which

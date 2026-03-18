@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/theaiteam-dev/swagger-jack/cmd"
+	"github.com/theaiteam-dev/commandspec/cmd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -12,7 +12,7 @@ import (
 // TestRootCommandUse verifies the root command has the correct Use field.
 func TestRootCommandUse(t *testing.T) {
 	root := cmd.NewRootCmd()
-	assert.Equal(t, "swaggerjack", root.Use)
+	assert.Equal(t, "cmdspec", root.Use)
 }
 
 // TestRootCommandHelpNonEmpty verifies the root command produces non-empty help text

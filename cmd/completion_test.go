@@ -1,4 +1,4 @@
-// Package cmd_test contains tests for the completion command in swagger-jack CLI.
+// Package cmd_test contains tests for the completion command in CommandSpec CLI.
 package cmd_test
 
 import (
@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/theaiteam-dev/swagger-jack/cmd"
+	"github.com/theaiteam-dev/commandspec/cmd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +24,7 @@ func executeCompletion(t *testing.T, shell string) (string, error) {
 	return out.String(), err
 }
 
-// TestCompletionBash verifies that `swaggerjack completion bash` outputs a bash completion script.
+// TestCompletionBash verifies that `cmdspec completion bash` outputs a bash completion script.
 // FAILS until cmd/completion.go is created and registered.
 func TestCompletionBash(t *testing.T) {
 	out, err := executeCompletion(t, "bash")
@@ -35,7 +35,7 @@ func TestCompletionBash(t *testing.T) {
 		"bash completion output should contain bash-specific content, got: %q", out)
 }
 
-// TestCompletionZsh verifies that `swaggerjack completion zsh` outputs a zsh completion script.
+// TestCompletionZsh verifies that `cmdspec completion zsh` outputs a zsh completion script.
 // FAILS until cmd/completion.go is created and registered.
 func TestCompletionZsh(t *testing.T) {
 	out, err := executeCompletion(t, "zsh")
@@ -45,7 +45,7 @@ func TestCompletionZsh(t *testing.T) {
 		"zsh completion output should contain zsh-specific content, got: %q", out)
 }
 
-// TestCompletionFish verifies that `swaggerjack completion fish` outputs a fish completion script.
+// TestCompletionFish verifies that `cmdspec completion fish` outputs a fish completion script.
 // FAILS until cmd/completion.go is created and registered.
 func TestCompletionFish(t *testing.T) {
 	out, err := executeCompletion(t, "fish")
@@ -53,7 +53,7 @@ func TestCompletionFish(t *testing.T) {
 	assert.NotEmpty(t, out, "completion fish should produce output")
 }
 
-// TestCompletionPowershell verifies that `swaggerjack completion powershell` outputs a powershell script.
+// TestCompletionPowershell verifies that `cmdspec completion powershell` outputs a powershell script.
 // FAILS until cmd/completion.go is created and registered.
 func TestCompletionPowershell(t *testing.T) {
 	out, err := executeCompletion(t, "powershell")

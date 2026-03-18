@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/theaiteam-dev/swagger-jack/internal/model"
+	"github.com/theaiteam-dev/commandspec/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

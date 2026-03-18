@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/theaiteam-dev/swagger-jack/internal/model"
-	"github.com/theaiteam-dev/swagger-jack/internal/parser"
+	"github.com/theaiteam-dev/commandspec/internal/model"
+	"github.com/theaiteam-dev/commandspec/internal/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/theaiteam-dev/swagger-jack/internal/preserve"
+	"github.com/theaiteam-dev/commandspec/internal/preserve"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,9 +30,9 @@ func TestExtract_SingleLabeledBlock(t *testing.T) {
 	src := `package main
 
 func RunE() error {
-	// swagger-jack:custom:start my-hook
+	// commandspec:custom:start my-hook
 	doSomethingCustom()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 	return nil
 }
 `
@@ -50,9 +50,9 @@ func TestExtract_SingleUnlabeledBlock(t *testing.T) {
 	src := `package main
 
 func Execute() {
-	// swagger-jack:custom:start
+	// commandspec:custom:start
 	customInit()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 `
 	blocks, err := preserve.Extract(src)
@@ -69,15 +69,15 @@ func TestExtract_MultipleBlocks(t *testing.T) {
 	src := `package main
 
 func Alpha() {
-	// swagger-jack:custom:start alpha-hook
+	// commandspec:custom:start alpha-hook
 	alphaCustom()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 
 func Beta() {
-	// swagger-jack:custom:start beta-hook
+	// commandspec:custom:start beta-hook
 	betaCustom()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 `
 	blocks, err := preserve.Extract(src)
@@ -98,13 +98,13 @@ func TestExtract_MultipleBlocksInSameFunction(t *testing.T) {
 	src := `package main
 
 func BigFunc() {
-	// swagger-jack:custom:start before-call
+	// commandspec:custom:start before-call
 	preHook()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 	doWork()
-	// swagger-jack:custom:start after-call
+	// commandspec:custom:start after-call
 	postHook()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 `
 	blocks, err := preserve.Extract(src)
@@ -122,9 +122,9 @@ func BigFunc() {
 func TestExtract_FileLevelBlock(t *testing.T) {
 	src := `package main
 
-// swagger-jack:custom:start file-level
+// commandspec:custom:start file-level
 var customVar = "hello"
-// swagger-jack:custom:end
+// commandspec:custom:end
 `
 	blocks, err := preserve.Extract(src)
 	require.NoError(t, err)
@@ -140,8 +140,8 @@ func TestExtract_EmptyBlock(t *testing.T) {
 	src := `package main
 
 func Foo() {
-	// swagger-jack:custom:start empty-hook
-	// swagger-jack:custom:end
+	// commandspec:custom:start empty-hook
+	// commandspec:custom:end
 }
 `
 	blocks, err := preserve.Extract(src)
@@ -171,7 +171,7 @@ func TestExtract_UnclosedBlockReturnsError(t *testing.T) {
 	src := `package main
 
 func Foo() {
-	// swagger-jack:custom:start unclosed
+	// commandspec:custom:start unclosed
 	doSomething()
 	// no end marker
 }
@@ -186,11 +186,11 @@ func TestExtract_NestedStartReturnsError(t *testing.T) {
 	src := `package main
 
 func Foo() {
-	// swagger-jack:custom:start outer
-	// swagger-jack:custom:start inner
+	// commandspec:custom:start outer
+	// commandspec:custom:start inner
 	doSomething()
-	// swagger-jack:custom:end
-	// swagger-jack:custom:end
+	// commandspec:custom:end
+	// commandspec:custom:end
 }
 `
 	_, err := preserve.Extract(src)
@@ -204,7 +204,7 @@ func TestExtract_EndWithoutStartReturnsError(t *testing.T) {
 
 func Foo() {
 	doSomething()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 `
 	_, err := preserve.Extract(src)
@@ -217,9 +217,9 @@ func TestExtract_LabelTrimmed(t *testing.T) {
 	src := `package main
 
 func Foo() {
-	// swagger-jack:custom:start   trimmed-label
+	// commandspec:custom:start   trimmed-label
 	custom()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 `
 	blocks, err := preserve.Extract(src)
@@ -236,9 +236,9 @@ func TestMerge_RoundTrip(t *testing.T) {
 	src := `package main
 
 func RunE() error {
-	// swagger-jack:custom:start my-hook
+	// commandspec:custom:start my-hook
 	doSomethingCustom()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 	return nil
 }
 `
@@ -253,8 +253,8 @@ func RunE() error {
 	assert.Contains(t, result, "doSomethingCustom()",
 		"merged result should contain the preserved custom code")
 	// The markers should still be present.
-	assert.Contains(t, result, "swagger-jack:custom:start")
-	assert.Contains(t, result, "swagger-jack:custom:end")
+	assert.Contains(t, result, "commandspec:custom:start")
+	assert.Contains(t, result, "commandspec:custom:end")
 }
 
 // TestMerge_InsertsBlockByLabel verifies that Merge re-inserts a block matched
@@ -263,9 +263,9 @@ func TestMerge_InsertsBlockByLabel(t *testing.T) {
 	oldSrc := `package main
 
 func RunE() error {
-	// swagger-jack:custom:start my-hook
+	// commandspec:custom:start my-hook
 	myCustomCode()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 	return nil
 }
 `
@@ -276,8 +276,8 @@ func RunE() error {
 	newSrc := `package main
 
 func RunE() error {
-	// swagger-jack:custom:start my-hook
-	// swagger-jack:custom:end
+	// commandspec:custom:start my-hook
+	// commandspec:custom:end
 	return nil
 }
 `
@@ -294,9 +294,9 @@ func TestMerge_InsertsBlockByContext(t *testing.T) {
 	oldSrc := `package main
 
 func Execute() {
-	// swagger-jack:custom:start
+	// commandspec:custom:start
 	contextCustom()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 `
 	blocks, err := preserve.Extract(oldSrc)
@@ -305,8 +305,8 @@ func Execute() {
 	newSrc := `package main
 
 func Execute() {
-	// swagger-jack:custom:start
-	// swagger-jack:custom:end
+	// commandspec:custom:start
+	// commandspec:custom:end
 }
 `
 	result, err := preserve.Merge(newSrc, blocks)
@@ -321,9 +321,9 @@ func TestMerge_OrphanedBlockProducesWarningComment(t *testing.T) {
 	oldSrc := `package main
 
 func RemovedFunc() {
-	// swagger-jack:custom:start orphan-hook
+	// commandspec:custom:start orphan-hook
 	orphanedCode()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 `
 	blocks, err := preserve.Extract(oldSrc)
@@ -388,15 +388,15 @@ func TestMerge_DuplicateLabels(t *testing.T) {
 	oldSrc := `package main
 
 func Alpha() {
-	// swagger-jack:custom:start dupe-hook
+	// commandspec:custom:start dupe-hook
 	alphaCustomCode()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 
 func Beta() {
-	// swagger-jack:custom:start dupe-hook
+	// commandspec:custom:start dupe-hook
 	betaCustomCode()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 `
 	blocks, err := preserve.Extract(oldSrc)
@@ -407,13 +407,13 @@ func Beta() {
 	newSrc := `package main
 
 func Alpha() {
-	// swagger-jack:custom:start dupe-hook
-	// swagger-jack:custom:end
+	// commandspec:custom:start dupe-hook
+	// commandspec:custom:end
 }
 
 func Beta() {
-	// swagger-jack:custom:start dupe-hook
-	// swagger-jack:custom:end
+	// commandspec:custom:start dupe-hook
+	// commandspec:custom:end
 }
 `
 
@@ -453,9 +453,9 @@ func TestExtract_CRLFSourceNormalizesContent(t *testing.T) {
 	src := "package main\r\n" +
 		"\r\n" +
 		"func RunE() error {\r\n" +
-		"\t// swagger-jack:custom:start crlf-hook\r\n" +
+		"\t// commandspec:custom:start crlf-hook\r\n" +
 		"\tdoCRLFThing()\r\n" +
-		"\t// swagger-jack:custom:end\r\n" +
+		"\t// commandspec:custom:end\r\n" +
 		"\treturn nil\r\n" +
 		"}\r\n"
 
@@ -491,11 +491,11 @@ func TestMerge_OrphanedBlockContentIsCommented(t *testing.T) {
 	oldSrc := `package main
 
 func RemovedFunc() {
-	// swagger-jack:custom:start orphan-compile-bug
+	// commandspec:custom:start orphan-compile-bug
 	someGoStatement()
 	x := computeSomething()
 	_ = x
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 `
 	blocks, err := preserve.Extract(oldSrc)
@@ -535,15 +535,15 @@ func TestMerge_MultipleBlocksAllPreserved(t *testing.T) {
 	oldSrc := `package main
 
 func Alpha() {
-	// swagger-jack:custom:start alpha-hook
+	// commandspec:custom:start alpha-hook
 	alphaCode()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 
 func Beta() {
-	// swagger-jack:custom:start beta-hook
+	// commandspec:custom:start beta-hook
 	betaCode()
-	// swagger-jack:custom:end
+	// commandspec:custom:end
 }
 `
 	blocks, err := preserve.Extract(oldSrc)
@@ -554,13 +554,13 @@ func Beta() {
 	newSrc := `package main
 
 func Alpha() {
-	// swagger-jack:custom:start alpha-hook
-	// swagger-jack:custom:end
+	// commandspec:custom:start alpha-hook
+	// commandspec:custom:end
 }
 
 func Beta() {
-	// swagger-jack:custom:start beta-hook
-	// swagger-jack:custom:end
+	// commandspec:custom:start beta-hook
+	// commandspec:custom:end
 }
 `
 	result, err := preserve.Merge(newSrc, blocks)

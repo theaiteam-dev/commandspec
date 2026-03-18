@@ -1,4 +1,4 @@
-module github.com/theaiteam-dev/swagger-jack
+module github.com/theaiteam-dev/commandspec
 
 go 1.22.1
 

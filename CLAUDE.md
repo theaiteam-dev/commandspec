@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Swagger Jack** is a code generator that reads an OpenAPI 3.x spec and produces a complete, buildable Go CLI project using Cobra. The generated CLIs map API resources to subcommands, path params to positional args, and query/body params to flags.
+**CommandSpec** is a code generator that reads an OpenAPI 3.x spec and produces a complete, buildable Go CLI project using Cobra. The generated CLIs map API resources to subcommands, path params to positional args, and query/body params to flags.
 
 This project is in early development — see `docs/SPEC.md` for the full design spec and implementation milestones.
 
@@ -51,12 +51,12 @@ Flag: Name, Type (string/int/bool/[]string), Required, Default, Source (query/bo
 └── go.mod
 ```
 
-### Swagger Jack CLI Commands
+### CommandSpec CLI Commands
 
-- `swaggerjack init --schema <path-or-url> --name <cli-name>` — Generate a new CLI project
-- `swaggerjack preview --schema <path-or-url>` — Dry run, show what would be generated
-- `swaggerjack update --schema <path-or-url>` — Regenerate after spec changes
-- `swaggerjack validate --schema <path-or-url>` — Validate spec is parseable
+- `cmdspec init --schema <path-or-url> --name <cli-name>` — Generate a new CLI project
+- `cmdspec preview --schema <path-or-url>` — Dry run, show what would be generated
+- `cmdspec update --schema <path-or-url>` — Regenerate after spec changes
+- `cmdspec validate --schema <path-or-url>` — Validate spec is parseable
 
 ## Key Design Decisions
 
@@ -66,12 +66,12 @@ Flag: Name, Type (string/int/bool/[]string), Required, Default, Source (query/bo
 - **Auth**: driven by OpenAPI `securitySchemes` — Bearer token, API key (custom header), or Basic auth; sourced from env vars, config file, or `--token` flag
 - **Every command** gets `--json` (raw JSON output), `--verbose`, `--config`, `--base-url`, `--no-color` global flags
 - **Enum params** → flag validation + shell completion via `ValidArgsFunction`
-- **Custom code preservation** (for `update`): marker comments `// swagger-jack:custom`
+- **Custom code preservation** (for `update`): marker comments `// commandspec:custom`
 - **Validation target for MVP**: Generate a working CLI from the Dittofeed OpenAPI spec
 
 ## Implementation Milestones
 
-See `docs/SPEC.md` for the full milestone breakdown. MVP (Milestone 1) targets: OpenAPI 3.0 JSON parser, internal model builder, Go/Cobra code generator, Bearer token auth, JSON output, `swaggerjack init`.
+See `docs/SPEC.md` for the full milestone breakdown. MVP (Milestone 1) targets: OpenAPI 3.0 JSON parser, internal model builder, Go/Cobra code generator, Bearer token auth, JSON output, `cmdspec init`.
 
 ## A(i)-Team Integration
 

@@ -1,4 +1,4 @@
-# Swagger Jack — Design Spec
+# CommandSpec — Design Spec
 
 ## Overview
 
@@ -226,28 +226,28 @@ The OpenAPI `securitySchemes` section drives which auth method is generated.
 
 **Known table output limitations**: `PrintTable` does not recursively format nested objects within array rows or arrays of non-objects. These cases fall back to pretty-printed JSON output. Full nested-object rendering is planned for a future milestone.
 
-## Phase 3: CLI for Swagger Jack Itself
+## Phase 3: CLI for CommandSpec Itself
 
 ### Commands
 
 ```bash
 # Generate a new CLI project from a spec
-swaggerjack init --schema <path-or-url> --name <cli-name> [--output-dir <dir>]
+cmdspec init --schema <path-or-url> --name <cli-name> [--output-dir <dir>]
 
 # Preview what would be generated (dry run)
-swaggerjack preview --schema <path-or-url>
+cmdspec preview --schema <path-or-url>
 
 # Regenerate after spec changes (preserves custom code in hooks)
-swaggerjack update --schema <path-or-url>
+cmdspec update --schema <path-or-url>
 
 # Validate a spec is parseable
-swaggerjack validate --schema <path-or-url>
+cmdspec validate --schema <path-or-url>
 ```
 
 ### Init Flow
 
 ```
-swaggerjack init --schema https://app.dittofeed.com/documentation/json --name dittofeed
+cmdspec init --schema https://app.dittofeed.com/documentation/json --name dittofeed
 ```
 
 1. Fetch and parse the OpenAPI spec
@@ -262,7 +262,7 @@ swaggerjack init --schema https://app.dittofeed.com/documentation/json --name di
 For when the API spec changes and you need to regenerate:
 
 - Regenerate command files from the new spec
-- Preserve any custom code the user added (via `// swagger-jack:custom` markers or a hooks system)
+- Preserve any custom code the user added (via `// commandspec:custom` markers or a hooks system)
 - Show a diff of what changed
 
 ## Phase 4: Edge Cases & Polish
@@ -315,7 +315,7 @@ myapi documents upload --file ./report.pdf --name "Q4 Report"
 - [x] Go code generator with Cobra templates
 - [x] Basic auth (Bearer token via env var)
 - [x] JSON output mode
-- [x] `swaggerjack init` command
+- [x] `cmdspec init` command
 
 **Validation target**: Generate a working CLI from the Dittofeed OpenAPI spec. ✓ Completed with full HTTP client wiring, RunE handlers, conditional imports, and integration tests.
 
@@ -327,12 +327,12 @@ myapi documents upload --file ./report.pdf --name "Q4 Report"
 - [ ] Nested object flag handling (dot notation)
 - [ ] Shell completions generation
 - [ ] Enum validation and completion
-- [ ] `swaggerjack validate` command
+- [ ] `cmdspec validate` command
 
 ### Milestone 3: Lifecycle
 
-- [ ] `swaggerjack update` with diff and custom code preservation
-- [ ] `swaggerjack preview` dry run
+- [ ] `cmdspec update` with diff and custom code preservation
+- [ ] `cmdspec preview` dry run
 - [ ] Pagination detection and `--all` flag
 - [ ] File upload support
 - [ ] Multiple auth scheme support
@@ -347,7 +347,7 @@ myapi documents upload --file ./report.pdf --name "Q4 Report"
 
 ## Open Questions
 
-1. **Generator language**: Write Swagger Jack itself in Go (dogfood the ecosystem) or TypeScript (faster to prototype with OpenAPI tooling)?
+1. **Generator language**: Write CommandSpec itself in Go (dogfood the ecosystem) or TypeScript (faster to prototype with OpenAPI tooling)?
 2. **Custom code preservation**: Marker comments vs. separate hook files vs. partial regeneration?
 3. **Config format**: YAML config files or stick with env vars only for simplicity?
 4. **Shorthand flags**: Auto-assign `-n` for `--name`, `-l` for `--limit`, etc.? Could conflict.

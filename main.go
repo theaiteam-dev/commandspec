@@ -1,11 +1,11 @@
-// Package main is the entry point for the swaggerjack CLI tool.
+// Package main is the entry point for the cmdspec CLI tool.
 package main
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/theaiteam-dev/swagger-jack/cmd"
+	"github.com/theaiteam-dev/commandspec/cmd"
 )
 
 func main() {

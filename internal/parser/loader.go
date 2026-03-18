@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/theaiteam-dev/swagger-jack/internal/model"
+	"github.com/theaiteam-dev/commandspec/internal/model"
 	"gopkg.in/yaml.v3"
 )
 
@@ -98,7 +98,7 @@ func loadFromURL(rawURL string, timeout time.Duration) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("creating request for %q: %w", rawURL, err)
 	}
-	req.Header.Set("User-Agent", "swagger-jack/1.0")
+	req.Header.Set("User-Agent", "commandspec/1.0")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {

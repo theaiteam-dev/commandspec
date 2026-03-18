@@ -1,4 +1,4 @@
-# Swagger Jack
+# CommandSpec
 
 Generate production-ready CLI tools from OpenAPI specs. Feed it a schema, get a `gh`-style CLI with proper help text, structured output, and auth baked in.
 
@@ -6,13 +6,13 @@ Generate production-ready CLI tools from OpenAPI specs. Feed it a schema, get a 
 
 MCP servers are just fancy API wrappers. Claude Code and other AI agents already know how to use CLIs — they read `--help`, compose flags, and parse output. So instead of writing another JSON-RPC adapter, just generate a real CLI.
 
-Swagger Jack takes your OpenAPI/Swagger spec and generates a Go CLI project using Cobra. Path params become positional args, query/body params become flags, and every command gets `--json` output for machine consumption.
+CommandSpec takes your OpenAPI/Swagger spec and generates a Go CLI project using Cobra. Path params become positional args, query/body params become flags, and every command gets `--json` output for machine consumption.
 
 ## What You Get
 
 ```bash
 # From this OpenAPI spec...
-swaggerjack init --schema https://api.example.com/docs/json --name myapi
+cmdspec init --schema https://api.example.com/docs/json --name myapi
 
 # ...you get a full CLI project
 cd myapi && go build -o myapi .
@@ -36,10 +36,10 @@ Every generated CLI includes:
 
 ```bash
 # Install
-go install github.com/queso/swagger-jack@latest
+go install github.com/theaiteam-dev/commandspec@latest
 
 # Generate a CLI from an OpenAPI spec
-swaggerjack init --schema ./openapi.yaml --name myapi
+cmdspec init --schema ./openapi.yaml --name myapi
 
 # Build and use it
 cd myapi
@@ -57,7 +57,7 @@ go build -o myapi .
 - **Pagination Support** — Automatic pagination flag generation (`--page`, `--per-page`, `--cursor`, `--all`) with FetchAll helper supporting offset, cursor, and keyset strategies
 - **Enum Support** — Automatic extraction and validation of enum fields with shell tab completion
 - **Table and JSON Output** — Generated CLIs default to table-formatted output with `--json` flag for JSON mode
-- **Shell Completions** — Both swagger-jack and generated CLIs provide bash/zsh/fish completion support
+- **Shell Completions** — Both CommandSpec and generated CLIs provide bash/zsh/fish completion support
 - **Multi-Auth Support** — Supports Bearer tokens, API keys, and Basic auth simultaneously with config file + env var integration
 - **File Upload Handling** — Automatic detection of multipart endpoints with file flag generation and upload support
 - **Code Generation** — Complete, buildable Go projects with Cobra CLI framework
@@ -70,7 +70,7 @@ go build -o myapi .
 ### Validate a spec (dry run)
 
 ```bash
-swaggerjack validate --schema ./openapi.yaml
+cmdspec validate --schema ./openapi.yaml
 # Output: Spec: My API (1.0.0)
 #         5 resources
 #         23 commands
@@ -79,7 +79,7 @@ swaggerjack validate --schema ./openapi.yaml
 ### Preview generated code (dry run)
 
 ```bash
-swaggerjack preview --schema ./openapi.yaml --name myapi
+cmdspec preview --schema ./openapi.yaml --name myapi
 # Shows all files that would be generated without writing to disk
 ```
 
@@ -87,13 +87,13 @@ swaggerjack preview --schema ./openapi.yaml --name myapi
 
 ```bash
 # From local file
-swaggerjack init --schema ./openapi.yaml --name myapi
+cmdspec init --schema ./openapi.yaml --name myapi
 
 # From URL
-swaggerjack init --schema https://api.example.com/docs/json --name myapi
+cmdspec init --schema https://api.example.com/docs/json --name myapi
 
 # Custom output directory
-swaggerjack init --schema ./openapi.yaml --name myapi --output-dir ./generated
+cmdspec init --schema ./openapi.yaml --name myapi --output-dir ./generated
 ```
 
 ### Update an existing CLI with a new spec
@@ -101,16 +101,16 @@ swaggerjack init --schema ./openapi.yaml --name myapi --output-dir ./generated
 ```bash
 # Regenerate from updated spec, preserving custom code
 cd myapi
-swaggerjack update --schema ../openapi-v2.yaml
+cmdspec update --schema ../openapi-v2.yaml
 
 # Preview changes without writing
-swaggerjack update --schema ../openapi-v2.yaml --dry-run
+cmdspec update --schema ../openapi-v2.yaml --dry-run
 
 # Suppress diff output
-swaggerjack update --schema ../openapi-v2.yaml --no-diff
+cmdspec update --schema ../openapi-v2.yaml --no-diff
 ```
 
-Custom code blocks marked with `swagger-jack:custom:start` / `swagger-jack:custom:end` comments are automatically preserved during update.
+Custom code blocks marked with `commandspec:custom:start` / `commandspec:custom:end` comments are automatically preserved during update.
 
 ### Generated project structure
 
@@ -170,10 +170,10 @@ go test -race ./...
 golangci-lint run ./...
 
 # Build the generator
-go build -o swaggerjack .
+go build -o cmdspec .
 
 # Test against a real spec
-./swaggerjack validate --schema https://petstore.swagger.io/v2/swagger.json
+./cmdspec validate --schema https://petstore.swagger.io/v2/swagger.json
 ```
 
 ## Status

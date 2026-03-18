@@ -1,5 +1,5 @@
 // Package model defines the normalized internal model types used throughout
-// the swagger-jack pipeline. These types represent the parsed OpenAPI spec
+// the commandspec pipeline. These types represent the parsed OpenAPI spec
 // as a CLI command tree.
 package model
 

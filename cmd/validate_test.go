@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/theaiteam-dev/swagger-jack/cmd"
+	"github.com/theaiteam-dev/commandspec/cmd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +19,7 @@ func validateFixtureDir() string {
 	return filepath.Join(filepath.Dir(filepath.Dir(file)), "testdata")
 }
 
-// executeValidate runs `swaggerjack validate --schema <path>` and returns output and error.
+// executeValidate runs `cmdspec validate --schema <path>` and returns output and error.
 func executeValidate(t *testing.T, schemaPath string) (string, error) {
 	t.Helper()
 	root := cmd.NewRootCmd()

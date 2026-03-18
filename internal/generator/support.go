@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/theaiteam-dev/swagger-jack/internal/model"
+	"github.com/theaiteam-dev/commandspec/internal/model"
 )
 
 // configTemplate is the Go source template for the generated project's config loader.

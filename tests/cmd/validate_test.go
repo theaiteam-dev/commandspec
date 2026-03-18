@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/theaiteam-dev/swagger-jack/cmd"
+	"github.com/theaiteam-dev/commandspec/cmd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/theaiteam-dev/swagger-jack/internal/model"
+	"github.com/theaiteam-dev/commandspec/internal/model"
 )
 
 // rootTemplate is the Go source template for the generated project's cmd/root.go.
@@ -38,8 +38,8 @@ func init() {
 	rootCmd.PersistentFlags().String("config", "", "Config file path")
 	rootCmd.PersistentFlags().String("base-url", {{goString .BaseURL}}, "API base URL")
 	rootCmd.PersistentFlags().Bool("no-color", false, "Disable color output")
-	// swagger-jack:custom:start init-hook
-	// swagger-jack:custom:end
+	// commandspec:custom:start init-hook
+	// commandspec:custom:end
 }
 `
 

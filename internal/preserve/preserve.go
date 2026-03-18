@@ -1,5 +1,5 @@
-// Package preserve implements custom code preservation for swagger-jack regeneration.
-// Users can annotate generated files with // swagger-jack:custom:start / :end marker
+// Package preserve implements custom code preservation for commandspec regeneration.
+// Users can annotate generated files with // commandspec:custom:start / :end marker
 // comments; Extract reads those blocks back out and Merge re-inserts them into
 // freshly generated source.
 package preserve
@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	markerStart = "// swagger-jack:custom:start"
-	markerEnd   = "// swagger-jack:custom:end"
+	markerStart = "// commandspec:custom:start"
+	markerEnd   = "// commandspec:custom:end"
 )
 
 // funcDeclRE matches the start of a Go function declaration line and captures
@@ -23,7 +23,7 @@ const (
 var funcDeclRE = regexp.MustCompile(`^\s*func\s+(?:\([^)]*\)\s+)?(\w+)\s*\(`)
 
 // CustomBlock represents a block of user-written code extracted from a
-// swagger-jack:custom:start / :end marker pair.
+// commandspec:custom:start / :end marker pair.
 type CustomBlock struct {
 	// Label is the optional marker label (e.g. "my-hook").
 	Label string
@@ -34,7 +34,7 @@ type CustomBlock struct {
 	Context string
 }
 
-// Extract scans source for swagger-jack:custom marker pairs and returns all
+// Extract scans source for commandspec:custom marker pairs and returns all
 // custom blocks. It returns an error if a block is unclosed, nested, or if an
 // end marker appears without a corresponding start marker.
 func Extract(source string) ([]CustomBlock, error) {
@@ -205,13 +205,13 @@ func Merge(newSource string, blocks []CustomBlock) (string, error) {
 		out = append(out, "// WARNING: The following custom blocks were orphaned during regeneration.")
 		out = append(out, "// Their original location no longer exists. Review and relocate manually.")
 		for _, b := range orphans {
-			out = append(out, fmt.Sprintf("// swagger-jack:custom:start %s (orphaned from %q)", b.Label, b.Context))
+			out = append(out, fmt.Sprintf("// commandspec:custom:start %s (orphaned from %q)", b.Label, b.Context))
 			if b.Content != "" {
 				for _, contentLine := range strings.Split(b.Content, "\n") {
 					out = append(out, "// "+contentLine)
 				}
 			}
-			out = append(out, "// swagger-jack:custom:end")
+			out = append(out, "// commandspec:custom:end")
 		}
 	}
 

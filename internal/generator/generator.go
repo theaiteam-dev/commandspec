@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/theaiteam-dev/swagger-jack/internal/model"
+	"github.com/theaiteam-dev/commandspec/internal/model"
 )
 
 // ValidateName checks that name is safe for use as a Go module name and CLI

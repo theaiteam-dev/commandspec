@@ -4,12 +4,12 @@
 
 ## 1. Context & Background
 
-swagger-jack today generates complete, buildable Go CLIs from OpenAPI 3.x specs. The tool is
+CommandSpec today generates complete, buildable Go CLIs from OpenAPI 3.x specs. The tool is
 useful for developers who consume REST APIs and want a CLI without writing one by hand.
 
 A significant share of modern APIs — GitHub, Shopify, Stripe, Linear, and many others — are
 GraphQL-first. These developers have no equivalent tool: they either hand-roll CLI wrappers,
-reach for generic HTTP clients, or write scripts. swagger-jack could serve them directly with
+reach for generic HTTP clients, or write scripts. CommandSpec could serve them directly with
 minimal changes to the generator pipeline, since the internal model (`APISpec → Resource →
 Command → Flag`) is already decoupled from the input format.
 
@@ -18,9 +18,9 @@ can cover without changing the generation side at all.
 
 ## 2. Problem Statement
 
-Developers who consume GraphQL APIs cannot use swagger-jack today. When they encounter a
+Developers who consume GraphQL APIs cannot use CommandSpec today. When they encounter a
 GraphQL service they want to script or automate, they must build CLI tooling from scratch or
-use generic, non-ergonomic clients. The barrier is that swagger-jack's parser only understands
+use generic, non-ergonomic clients. The barrier is that CommandSpec's parser only understands
 OpenAPI — not GraphQL Schema Definition Language (SDL), the standard format for describing a
 GraphQL schema.
 
@@ -62,7 +62,7 @@ GraphQL schema.
 - Skip `Subscription` root type fields (no command generated, no error)
 - Infer resource groups from field names (`createUser`, `listUsers` → `users` group) using
   naming convention heuristics
-- Optional manifest file (`swagger-jack.graphql.yaml` alongside the SDL) to override
+- Optional manifest file (`commandspec.graphql.yaml` alongside the SDL) to override
   resource grouping, verb assignment, or field inclusion/exclusion
 - Scalar and enum arguments → typed CLI flags (string, int, bool, float, enum with validation)
 - Non-null arguments (`!`) → required flags
@@ -74,10 +74,10 @@ GraphQL schema.
   `pageInfo` in response) and wire up `FetchAll` pagination support
 - Auto-detect offset pagination (`limit`/`offset` args) and wire up pagination support
 - Auto-detect input format from file extension (`.graphql`, `.gql`) and SDL content
-  (heuristic: presence of `type Query` or `type Mutation`) so `swaggerjack init --schema`
+  (heuristic: presence of `type Query` or `type Mutation`) so `cmdspec init --schema`
   works without a `--mode` flag
-- `swaggerjack update` works with SDL schemas (same preserve + diff flow as OpenAPI)
-- `swaggerjack preview` works with SDL schemas
+- `cmdspec update` works with SDL schemas (same preserve + diff flow as OpenAPI)
+- `cmdspec preview` works with SDL schemas
 
 ### Out of Scope
 
@@ -115,7 +115,7 @@ GraphQL schema.
    `orders`).
 6. If the heuristic produces an empty or ambiguous resource name, the field name itself
    (kebab-cased) shall be used as both the resource and command name.
-7. A manifest file (`swagger-jack.graphql.yaml`) in the same directory as the SDL shall
+7. A manifest file (`commandspec.graphql.yaml`) in the same directory as the SDL shall
    override inferred resource groups and verb assignments for specific fields.
 8. Fields listed in the manifest as `exclude: true` shall be omitted from the generated CLI.
 
@@ -159,7 +159,7 @@ GraphQL schema.
 
 **Format Auto-Detection**
 
-22. `swaggerjack init --schema <path>` shall detect GraphQL SDL automatically if the file
+22. `cmdspec init --schema <path>` shall detect GraphQL SDL automatically if the file
     extension is `.graphql` or `.gql`, or if the file content contains a `type Query` or
     `type Mutation` declaration.
 23. OpenAPI detection shall take precedence when the file contains an `openapi:` key.
@@ -167,7 +167,7 @@ GraphQL schema.
 
 **Validate Command**
 
-25. `swaggerjack validate --schema <path>` shall work with SDL files, reporting: parse
+25. `cmdspec validate --schema <path>` shall work with SDL files, reporting: parse
     errors, fields that could not be mapped to a resource/verb, arguments that will fall
     back to `--<arg>-json`, and any manifest override warnings.
 26. Validate shall exit non-zero if the SDL contains parse errors; it shall exit zero with
@@ -216,7 +216,7 @@ GraphQL schema.
 - **Custom scalar type:** treat as `string`; no warning.
 - **Circular input type reference:** detect and break the cycle; treat the recursive field
   as `--<field>-json`.
-- **`swaggerjack update` with a field that was removed from the schema:** treat as an orphan
+- **`cmdspec update` with a field that was removed from the schema:** treat as an orphan
   command (existing orphan detection logic applies).
 
 ## 7. Design Principles
@@ -246,7 +246,7 @@ inspected and classified as scalar flags, dot-notation flags, or JSON-escape-hat
 depending on their type and depth. A manifest file, if present, is applied as a final
 override pass before the `APISpec` is handed to the generator.
 
-Format auto-detection happens at the `swaggerjack init` entry point: the tool inspects the
+Format auto-detection happens at the `cmdspec init` entry point: the tool inspects the
 file extension and, as a fallback, a small set of content signatures. No user-facing flag
 is needed.
 
@@ -284,12 +284,12 @@ resource/verb overrides or exclusions. It lives alongside the SDL file for easy 
 
 ### Resolved
 
-- **Manifest filename:** Fixed at `swagger-jack.graphql.yaml`. Not configurable for now;
+- **Manifest filename:** Fixed at `commandspec.graphql.yaml`. Not configurable for now;
   add a `--manifest` flag only if users request it.
 - **Single `input:` argument unwrapping:** Auto-unwrap. If a mutation has exactly one input
   object argument, flatten its fields to top-level flags. More ergonomic; the special case
   is straightforward.
-- **`swaggerjack validate` for SDL:** Yes, include. Minimal incremental work on top of the
+- **`cmdspec validate` for SDL:** Yes, include. Minimal incremental work on top of the
   parser/mapper; reports parse errors, mapping issues, and JSON-fallback notices.
 - **Union/Interface return types:** Print raw JSON output for those commands. No special
   handling needed.

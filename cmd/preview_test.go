@@ -10,10 +10,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/theaiteam-dev/swagger-jack/cmd"
-	"github.com/theaiteam-dev/swagger-jack/internal/generator"
-	"github.com/theaiteam-dev/swagger-jack/internal/model"
-	"github.com/theaiteam-dev/swagger-jack/internal/parser"
+	"github.com/theaiteam-dev/commandspec/cmd"
+	"github.com/theaiteam-dev/commandspec/internal/generator"
+	"github.com/theaiteam-dev/commandspec/internal/model"
+	"github.com/theaiteam-dev/commandspec/internal/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +24,7 @@ func previewFixtureDir() string {
 	return filepath.Join(filepath.Dir(filepath.Dir(file)), "testdata")
 }
 
-// executePreview runs `swaggerjack preview` with the given args and returns
+// executePreview runs `cmdspec preview` with the given args and returns
 // combined output and error.
 func executePreview(t *testing.T, args ...string) (string, error) {
 	t.Helper()

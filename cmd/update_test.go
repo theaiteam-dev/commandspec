@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/theaiteam-dev/swagger-jack/cmd"
+	"github.com/theaiteam-dev/commandspec/cmd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +20,7 @@ func updateFixtureDir() string {
 	return filepath.Join(filepath.Dir(filepath.Dir(file)), "testdata")
 }
 
-// executeUpdate runs `swaggerjack update` with the given args and returns combined
+// executeUpdate runs `cmdspec update` with the given args and returns combined
 // output and error.
 func executeUpdate(t *testing.T, args ...string) (string, error) {
 	t.Helper()
@@ -120,7 +120,7 @@ func TestUpdateCmd_WritesFiles(t *testing.T) {
 // --- Custom code preservation ---
 
 // TestUpdateCmd_PreservesCustomCode verifies that when an existing generated file
-// contains a // swagger-jack:custom:start block INSIDE a function body, the custom
+// contains a // commandspec:custom:start block INSIDE a function body, the custom
 // block content survives regeneration as EXECUTABLE code — not commented-out orphan output.
 //
 // The original test was wrong: it appended the custom block at file-level (after all
@@ -145,7 +145,7 @@ func TestUpdateCmd_PreservesCustomCode(t *testing.T) {
 	// This places it where the generator should also emit a matching marker slot after B.A.'s fix,
 	// allowing Merge to re-insert it as executable (non-commented) code on the next update.
 	const customMarker = "myPreservedCustomCode()"
-	const customBlock = "\t// swagger-jack:custom:start init-hook\n\t" + customMarker + "\n\t// swagger-jack:custom:end\n"
+	const customBlock = "\t// commandspec:custom:start init-hook\n\t" + customMarker + "\n\t// commandspec:custom:end\n"
 
 	// Replace the closing brace of init() with the custom block + closing brace.
 	// The generated init() always ends with a single "}" on its own line.
@@ -186,7 +186,7 @@ func TestUpdateCmd_PreservesCustomCode(t *testing.T) {
 }
 
 // TestUpdateCmd_MalformedMarkerPrintsWarning verifies that when a generated file
-// has an UNCLOSED swagger-jack:custom:start marker, the update command prints a
+// has an UNCLOSED commandspec:custom:start marker, the update command prints a
 // warning to output (including the filename) rather than silently discarding the
 // extraction error and overwriting the file.
 //
@@ -206,7 +206,7 @@ func TestUpdateCmd_MalformedMarkerPrintsWarning(t *testing.T) {
 	original, readErr := os.ReadFile(rootGoPath)
 	require.NoError(t, readErr, "cmd/root.go should exist after first update")
 
-	unclosedBlock := "\n// swagger-jack:custom:start my-block\nmyCustomCode()\n// (no end marker — this is malformed)\n"
+	unclosedBlock := "\n// commandspec:custom:start my-block\nmyCustomCode()\n// (no end marker — this is malformed)\n"
 	malformed := string(original) + unclosedBlock
 	require.NoError(t, os.WriteFile(rootGoPath, []byte(malformed), 0o644))
 

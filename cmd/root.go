@@ -1,4 +1,4 @@
-// Package cmd contains the cobra commands for the swagger-jack CLI tool.
+// Package cmd contains the cobra commands for the CommandSpec CLI tool.
 package cmd
 
 import (
@@ -8,12 +8,12 @@ import (
 // version is set at build time via -ldflags.
 var version = "dev"
 
-// NewRootCmd constructs and returns the root cobra command for swagger-jack.
+// NewRootCmd constructs and returns the root cobra command for CommandSpec.
 func NewRootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "swaggerjack",
+		Use:   "cmdspec",
 		Short: "Generate a Go CLI from an OpenAPI 3.x spec",
-		Long: `Swagger Jack reads an OpenAPI 3.x spec and produces a complete,
+		Long: `CommandSpec reads an OpenAPI 3.x spec and produces a complete,
 buildable Go CLI project using Cobra.`,
 		Version:       version,
 		SilenceUsage:  true,
