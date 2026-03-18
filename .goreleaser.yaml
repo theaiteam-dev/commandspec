@@ -52,7 +52,7 @@ changelog:
 release:
   github:
     owner: theaiteam-dev
-    name: swagger-jack
+    name: commandspec
   draft: false
   prerelease: auto
   name_template: "v{{.Version}}"
