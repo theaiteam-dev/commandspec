@@ -88,6 +88,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Custom code preservation uses comment-marker scanning with CRLF-aware merge
 - `cmdspec update` command integrates preserve package for seamless regeneration
 
+## [0.4.0] - 2026-03-18
+
+### Changed
+
+- **Project renamed to CommandSpec** — binary is now `cmdspec` (was `swaggerjack`), module path updated to `github.com/theaiteam-dev/commandspec`
+- **Custom code markers updated** — preservation markers are now `commandspec:custom:start` / `commandspec:custom:end` (were `swagger-jack:custom:start` / `swagger-jack:custom:end`)
+- **GoReleaser + release workflow** — automated binary releases on `v*` tags; builds for linux/darwin/windows × amd64/arm64
+
 ## [Unreleased]
 
 No changes yet.
